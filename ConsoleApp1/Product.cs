@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace ConsoleApp1
 {
-    public class Product
+    public class Product : ProductBase
     {
         public Guid Id { get; private set; }
 
@@ -70,6 +70,7 @@ namespace ConsoleApp1
         public DateTime UpdatedAt { get; private set; }
 
         public Product(string name, string description, int quantity, decimal price, ProductCategory category)
+            : base(name, description, price)
         {
             Id = Guid.NewGuid();
             _name = name;
@@ -84,6 +85,11 @@ namespace ConsoleApp1
         private void UpdateTimestamp()
         {
             UpdatedAt = DateTime.Now;
+        }
+
+        public override string GetInfo()
+        {
+            return $"{Name} ({Category}) - {Price:C}, Qty: {Quantity}";
         }
 
         public override string ToString()

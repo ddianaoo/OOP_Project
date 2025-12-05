@@ -5,7 +5,7 @@ using System.Text;
 
 namespace ConsoleApp1
 {
-    public class Order
+    public class Order : IComparable<Order>
     {
         public Guid Id { get; private set; }
         public DateTime CreatedAt { get; private set; }
@@ -90,5 +90,13 @@ namespace ConsoleApp1
                 sb.AppendLine(item.ForTable());
             return sb.ToString();
         }
+
+        public int CompareTo(Order other)
+        {
+            if (other == null) return 1;
+
+            return this.GetTotal().CompareTo(other.GetTotal());
+        }
+
     }
 }

@@ -111,8 +111,8 @@ namespace TestProject1
             var product1 = CreateSampleProduct("P1", 10m);
             var product2 = CreateSampleProduct("P2", 15m);
 
-            order.AddProduct(product1, 2); // 20
-            order.AddProduct(product2, 3); // 45
+            order.AddProduct(product1, 2);
+            order.AddProduct(product2, 3);
 
             Assert.AreEqual(65m, order.GetTotal());
         }
