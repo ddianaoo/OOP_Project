@@ -1,12 +1,27 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Mail;
 
 namespace ConsoleApp1
 {
+    public delegate void UserEventHandler(User user, string message);
+
     public class User
     {
         public Guid Id { get; private set; }
+
+        public static Predicate<User> EmailChecker = u =>
+            !string.IsNullOrWhiteSpace(u.Email) && u.Email.Contains("@");
+
+        public static Func<User, string> UserFormatter = u =>
+            $"{u.FirstName} {u.LastName} | {u.Email} | {u.Role}";
+
+        public static Action<Order> OrderLogger = order =>
+            Console.WriteLine($"[LOG] Order {order.Id} → {order.Status}");
+
+        public event UserEventHandler? NotifyUser;
+
 
         private string _firstName;
         public string FirstName
@@ -79,28 +94,32 @@ namespace ConsoleApp1
             Password = password;
             Role = role;
             Orders = new List<Order>();
+
+            if (!EmailChecker(this))
+                throw new ArgumentException("Email не проходить Predicate-перевірку.");
         }
 
         public void CreateOrder(Order order)
         {
             Orders.Add(order);
+            OrderLogger(order);
+            NotifyUser?.Invoke(this, "Створено нове замовлення.");
         }
 
         public void PayOrder(Guid orderId)
         {
             var order = Orders.FirstOrDefault(o => o.Id == orderId);
             if (order == null)
-            {
-                throw new InvalidOperationException("Рядок порожній.");
-            }
+                throw new InvalidOperationException("Замовлення не знайдено.");
 
             if (order.Status != OrderStatus.Created)
-            {
                 throw new InvalidOperationException($"Неможливо оплатити замовлення зі статусом {order.Status}.");
-            }
 
             order.ChangeStatus(OrderStatus.Paid);
+            OrderLogger(order);
+            NotifyUser?.Invoke(this, "Ваше замовлення оплачено.");
         }
+
         public void CancelOrder(Guid orderId)
         {
             var order = Orders.FirstOrDefault(o => o.Id == orderId);
@@ -114,11 +133,13 @@ namespace ConsoleApp1
                 throw new InvalidOperationException("Замовлення вже відмінено.");
 
             order.ChangeStatus(OrderStatus.Canceled);
+            OrderLogger(order);
+            NotifyUser?.Invoke(this, "Ваше замовлення скасовано.");
         }
 
         public override string ToString()
         {
-            return $"{FirstName} {LastName} ({Role}) - {Email}";
+            return UserFormatter(this);
         }
 
         private bool IsValidEmail(string email)
@@ -146,24 +167,17 @@ namespace ConsoleApp1
 
             string[] parts = s.Split(';');
             if (parts.Length < 5)
-                throw new FormatException("Невірний формат рядка. Очікується 5 елементів через ';': FirstName;LastName;Email;Password;Role.");
+                throw new FormatException("Невірний формат.");
 
-            try
-            {
-                string firstName = parts[0].Trim();
-                string lastName = parts[1].Trim();
-                string email = parts[2].Trim();
-                string password = parts[3].Trim();
+            string firstName = parts[0].Trim();
+            string lastName = parts[1].Trim();
+            string email = parts[2].Trim();
+            string password = parts[3].Trim();
 
-                if (!Enum.TryParse(parts[4].Trim(), out UserRole role))
-                    throw new ArgumentException($"Невідома роль: {parts[4]}");
+            if (!Enum.TryParse(parts[4].Trim(), out UserRole role))
+                throw new ArgumentException($"Невідома роль: {parts[4]}");
 
-                return new User(firstName, lastName, email, password, role);
-            }
-            catch (Exception ex)
-            {
-                throw new FormatException("Помилка перетворення рядка у User: " + ex.Message, ex);
-            }
+            return new User(firstName, lastName, email, password, role);
         }
 
         public static bool TryParse(string s, out User? user)

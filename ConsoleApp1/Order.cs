@@ -26,6 +26,10 @@ namespace ConsoleApp1
         public User User { get; private set; }
         public List<OrderProduct> Items { get; private set; }
 
+        public event Action<Order, OrderStatus>? StatusChanged;
+        public event Action<Order, Product, int>? ProductAdded;
+
+
         public Order(User user)
         {
             Id = Guid.NewGuid();
@@ -57,13 +61,19 @@ namespace ConsoleApp1
             {
                 Items.Add(new OrderProduct(product, this, quantity));
             }
+
             UpdateTimestamp();
+            ProductAdded?.Invoke(this, product, quantity);
         }
 
         public void ChangeStatus(OrderStatus newStatus)
         {
+            if (!Enum.IsDefined(typeof(OrderStatus), newStatus))
+                throw new ArgumentException("Невірне значення статусу замовлення.");
+
             Status = newStatus;
             UpdateTimestamp();
+            StatusChanged?.Invoke(this, newStatus);
         }
 
         public decimal GetTotal()
@@ -73,12 +83,15 @@ namespace ConsoleApp1
 
         public override string ToString()
         {
-            return $"Order {Id} | Status: {Status} | Total: {GetTotal():C} | Created: {CreatedAt:dd.MM.yyyy HH:mm:ss} | Updated: {UpdatedAt:dd.MM.yyyy HH:mm:ss}";
+            return $"Order {Id} | Status: {Status} | Total: {GetTotal():C} | " +
+                   $"Created: {CreatedAt:dd.MM.yyyy HH:mm:ss} | Updated: {UpdatedAt:dd.MM.yyyy HH:mm:ss}";
         }
 
         public string ForTable()
         {
-            return $"{Id} | {User.FirstName} {User.LastName,-25} | Status: {Status,-10} | Total: {GetTotal(),10:C} | Created: {CreatedAt:dd.MM.yyyy HH:mm:ss} | Updated: {UpdatedAt:dd.MM.yyyy HH:mm:ss}";
+            return $"{Id} | {User.FirstName} {User.LastName,-25} | Status: {Status,-10} | " +
+                   $"Total: {GetTotal(),10:C} | Created: {CreatedAt:dd.MM.yyyy HH:mm:ss} | " +
+                   $"Updated: {UpdatedAt:dd.MM.yyyy HH:mm:ss}";
         }
 
         public string ItemsForTable()
@@ -94,9 +107,7 @@ namespace ConsoleApp1
         public int CompareTo(Order other)
         {
             if (other == null) return 1;
-
             return this.GetTotal().CompareTo(other.GetTotal());
         }
-
     }
 }
